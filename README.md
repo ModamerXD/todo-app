@@ -65,15 +65,15 @@ docker compose down -v       # stop containers + delete DB volume (full reset)
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Docker Host                              │
 │                                                                 │
-│  ┌──────────────────┐   frontend_net   ┌──────────────────┐   │
-│  │   taskflow_      │ ──────────────── │   taskflow_      │   │
-│  │   frontend       │                  │   backend        │   │
-│  │  (nginx:80)      │                  │  (node:5000)     │   │
-│  │  React SPA       │                  │  Express REST    │   │
-│  └──────────────────┘                  └──────────────────┘   │
+│  ┌──────────────────┐   frontend_net   ┌──────────────────┐     │
+│  │   taskflow_      │ ──────────────── │   taskflow_      │     │
+│  │   frontend       │                  │   backend        │     │
+│  │  (nginx:80)      │                  │  (node:5000)     │     │
+│  │  React SPA       │                  │  Express REST    │     │
+│  └──────────────────┘                  └──────────────────┘     │
 │        Port 3000                              Port 5000         │
 │                                               │ backend_net     │
-│                                         ┌─────┴────────────┐   │
+│                                         ┌─────┴─────────────┐   │
 │                                         │  taskflow_db      │   │
 │                                         │  (postgres:5432)  │   │
 │                                         │  (not exposed)    │   │
