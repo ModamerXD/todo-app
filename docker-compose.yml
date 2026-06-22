@@ -1,0 +1,94 @@
+services:
+
+  # ── PostgreSQL Database ─────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: taskflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    expose:
+      - "5432"
+
+  # ── Node.js / Express API ───────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskflow_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV:       ${NODE_ENV}
+      PORT:           ${PORT}
+      DB_HOST:        ${DB_HOST}
+      DB_PORT:        ${DB_PORT}
+      DB_NAME:        ${DB_NAME}
+      DB_USER:        ${DB_USER}
+      DB_PASSWORD:    ${DB_PASSWORD}
+      JWT_SECRET:     ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      FRONTEND_URL:   ${FRONTEND_URL}
+    # Not exposed to host — nginx proxies to it internally
+    expose:
+      - "5000"
+    networks:
+      - backend_net
+      - frontend_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── React / nginx Frontend ──────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+    container_name: taskflow_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - frontend_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+# ── Named volumes ──────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────
+# backend_net: db <-> backend only
+# frontend_net: backend <-> frontend (nginx proxies /api/* internally)
+networks:
+  backend_net:
+    driver: bridge
+  frontend_net:
+    driver: bridge
